@@ -48,6 +48,12 @@
       role: 'СТОМАТОЛОГ-ХИРУРГ',
       description: 'Хирургическая стоматология. Выпускник Казанского государственного медицинского университета, 2021 год. Образование по хирургической стоматологии - 2023 год.',
       details: 'Врач обсудит вашу ситуацию и возможные варианты хирургического лечения. Объём вмешательства определяется после обследования. Актуальное расписание уточняйте в клинике.'
+    },
+    milena: {
+      title: 'Милена Радиковна Шакирьянова',
+      role: 'СТОМАТОЛОГ-ОРТОДОНТ · СТОМАТОЛОГ · СТОМАТОЛОГ-ГИГИЕНИСТ',
+      description: 'Ортодонтия, лечение зубов и профессиональная гигиена. Выпускница Казанского государственного медицинского университета по специальности «Стоматология», 2021 год.',
+      details: 'Прошла повышение квалификации по эндодонтии, реставрации зубов, КЛКТ и диагностике на ортодонтическом приёме. Актуальное расписание и запись уточняйте в клинике.'
     }
   };
 
@@ -144,11 +150,11 @@
   let appointmentAttempted = false;
   function validateAppointmentField(field) {
     let message = '';
-    if (field.id === 'appointment-name' && (!field.value.trim() || !field.validity.valid)) message = 'Укажите ваше имя.';
+    if (field.id === 'appointment-name' && (!field.value.trim() || /\p{Nd}/u.test(field.value) || !field.validity.valid)) message = /\p{Nd}/u.test(field.value) ? 'Укажите имя без цифр.' : 'Укажите ваше имя.';
     else if (!field.validity.valid) {
-      if (field.type === 'checkbox') message = 'Подтвердите согласие на обработку данных.';
+      if (field.type === 'checkbox') message = 'Подтвердите согласие.';
       else if (field.validity.valueMissing) message = 'Укажите номер телефона.';
-      else message = 'Введите от 10 до 15 цифр, с кодом страны.';
+      else message = 'Нужно от 10 до 15 цифр.';
     }
     const error = document.querySelector('#' + field.id + '-error');
     error.textContent = message;
@@ -158,6 +164,18 @@
   }
   appointmentFields.forEach(field => {
     field.addEventListener(field.type === 'checkbox' ? 'change' : 'input', () => {
+      if (field.id === 'appointment-name' || field.type === 'tel') {
+        const cleanValue = value => field.type === 'tel'
+          ? value.replace(/[^0-9+ ()-]/g, '').replace(/(?!^)\+/g, '')
+          : value.replace(/\p{Nd}/gu, '');
+        const cleaned = cleanValue(field.value);
+        if (cleaned !== field.value) {
+          const start = cleanValue(field.value.slice(0, field.selectionStart)).length;
+          const end = cleanValue(field.value.slice(0, field.selectionEnd)).length;
+          field.value = cleaned;
+          field.setSelectionRange(start, end);
+        }
+      }
       if (appointmentAttempted) validateAppointmentField(field);
       appointmentStatus.textContent = '';
     });
@@ -177,12 +195,14 @@
   document.querySelector('#appointment-submit').hidden = false;
 
   const techDetails = [...document.querySelectorAll('[data-tech]')];
-  techDetails.forEach(detail => detail.addEventListener('toggle', () => {
-    if (!detail.open) return;
-    techDetails.forEach(other => {
-      if (other !== detail) other.open = false;
+  techDetails.forEach(detail => {
+    const summary = detail.querySelector('summary');
+    summary.addEventListener('click', event => {
+      event.preventDefault();
+      const opening = !detail.open;
+      techDetails.forEach(other => { other.open = other === detail && opening; });
     });
-  }));
+  });
 
   const comparisonRange = document.querySelector('#smile-comparison');
   comparisonRange.hidden = false;

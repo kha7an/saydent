@@ -86,7 +86,7 @@ h1 span { color: var(--wine); }
 .hero-description { margin-top: 28px; font-size: 15px; color: var(--muted); line-height: 1.8; }
 .hero-buttons { display: flex; align-items: center; gap: 25px; margin-top: 34px; }
 .hero-signature { display: flex; align-items: center; gap: 12px; margin-top: 62px; }
-.signature-mark { width: 37px; height: 37px; border: 1px solid var(--line); border-radius: 50%; display: grid; place-items: center; font-size: 26px; letter-spacing: -3px; padding-right: 3px; font-weight: 500; color: var(--wine); }
+.signature-mark { width: 37px; height: 37px; border: 1px solid var(--line); border-radius: 50%; display: grid; place-items: center; font-size: 26px; line-height: 1; font-weight: 500; color: var(--wine); }
 .hero-signature > span:last-child { font-size: 12px; line-height: 1.7; color: var(--muted); }
 .hero-signature strong { font-weight: 500; color: var(--ink); }
 .hero-visual { min-width: 0; height: 600px; position: relative; }
@@ -167,11 +167,9 @@ h1 span { color: var(--wine); }
   .results { grid-template-columns: 1fr; gap: 36px; }
 }
 
-.doctor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px; max-width: 960px; margin-inline: auto; }
-.doctor-image { position: relative; height: 440px; border-radius: 20px; overflow: hidden; background: #e6e4df; }
-.doctor-image img { height: 100%; object-fit: cover; object-position: 50% 22%; transition: transform 1s var(--ease), filter 1s; filter: saturate(.6); }
-.doctor-image.kamol img { object-fit: contain; object-position: center bottom; }
-.doctor-card:hover img { transform: scale(1.03); filter: saturate(.9); }
+.doctor-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 30px; margin-inline: auto; }
+.doctor-image { position: relative; aspect-ratio: 4 / 5; border-radius: 20px; overflow: hidden; background: #eeebe7; }
+.doctor-image img { height: 100%; object-fit: cover; object-position: center; }
 .doctor-tag { position: absolute; bottom: 20px; left: 20px; border-radius: 50px; background: #ffffffdc; max-width: calc(100% - 40px); padding: 10px 13px; font-size: 10px; letter-spacing: .8px; backdrop-filter: blur(12px); }
 .doctor-info { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 22px; }
 .doctor-info h3 { font-size: 24px; font-weight: 500; line-height: 1.23; letter-spacing: -.8px; }
@@ -215,14 +213,20 @@ address { font-size: 14px; line-height: 1.7; font-style: normal; margin-top: 26p
 .appointment-form { margin-top: 28px; }
 .field + .field { margin-top: 20px; }
 .field label { display: block; margin-bottom: 9px; font-size: 13px; font-weight: 500; }
-.field input { width: 100%; min-height: 52px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font-size: 16px; }
-.field input[aria-invalid="true"] { border-color: var(--wine); background: #fff9fa; }
-.consent input[aria-invalid="true"] { outline: 1px solid var(--wine); outline-offset: 2px; }
-.field-error { margin-top: 8px; color: var(--wine); font-size: 12px; line-height: 1.6; }
+.field input { width: 100%; min-height: 52px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font-size: 16px; transition: border-color .2s, box-shadow .2s, background .2s; }
+.field input[aria-invalid="true"] { border-color: var(--wine); background: #fffafb; box-shadow: inset 3px 0 var(--wine); }
+.field input:focus-visible { outline: 2px solid var(--wine); outline-offset: 3px; }
+.field-error, .appointment-status:not(:empty) { display: flex; align-items: flex-start; gap: 9px; padding: 11px 12px; border: 1px solid #761b321a; border-radius: 9px; background: #f5ecee; color: var(--wine-dark); font-size: 12px; line-height: 1.6; }
+.field-error { margin-top: 9px; align-items: center; }
+.appointment-form .field-error::before { margin-top: 0; }
+.field-error::before, .appointment-status:not(:empty)::before { content: ""; flex: 0 0 16px; width: 16px; height: 16px; margin-top: 2px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23761b32' stroke-width='1.5'%3E%3Ccircle cx='10' cy='10' r='8'/%3E%3Cpath d='M10 5.5v5' stroke-linecap='round'/%3E%3Ccircle cx='10' cy='14' r='.8' fill='%23761b32' stroke='none'/%3E%3C/svg%3E") center / contain no-repeat; }
 .field input::placeholder { color: var(--muted); }
 .field small { display: block; margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
-.consent { display: flex; align-items: flex-start; gap: 11px; margin-top: 24px; font-size: 12px; line-height: 1.7; color: var(--muted); }
-.consent input { flex: 0 0 18px; width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--wine); }
+.consent { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: start; column-gap: 11px; margin-top: 24px; font-size: 12px; line-height: 1.7; color: var(--muted); }
+.consent .field-error { grid-column: 1 / -1; }
+.consent input { appearance: none; width: 18px; height: 18px; margin: 2px 0 0; border: 0; border-radius: 5px; background: #a18e94; cursor: pointer; }
+.consent input:checked { background: var(--wine) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18' fill='none'%3E%3Cpath d='m4.5 9 3 3 6-6' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; }
+@media (forced-colors: active) { .consent input { appearance: auto; } }
 .consent-policy { padding: 0; background: transparent; color: var(--wine); font: inherit; text-decoration: underline; text-underline-offset: 3px; }
 .appointment-status { color: var(--wine); font-size: 13px; line-height: 1.7; }
 .appointment-status:not(:empty) { margin-top: 16px; }
@@ -270,6 +274,7 @@ dialog h2 { font-size: 38px; margin-top: 23px; }
   .hero-signature { margin-top: 82px; }
 }
 @media (max-width: 1200px) {
+  .doctor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 960px; }
   .shell { width: calc(100% - 80px); }
   .header-inner { width: calc(100% - 64px); gap: 20px; }
   .navigation { gap: 20px; }
@@ -329,7 +334,6 @@ dialog h2 { font-size: 38px; margin-top: 23px; }
   .technology h2 { font-size: 38px; }
   .precision-stage { align-self: center; }
   .tech-steps summary { font-size: 14px; gap: 12px; }
-  .doctor-image { height: 355px; }
   .doctor-grid { gap: 22px; }
   .doctor-info h3 { font-size: 22px; }
   .review-card { padding: 25px; }
@@ -400,7 +404,7 @@ dialog h2 { font-size: 38px; margin-top: 23px; }
   .precision-stage { width: 100%; max-width: 430px; margin-inline: auto; }
   .doctors .section-heading { gap: 20px; }
   .doctor-grid { grid-template-columns: 1fr; gap: 38px; }
-  .doctor-image { height: 410px; border-radius: 16px; }
+  .doctor-image { border-radius: 16px; }
   .doctor-info h3 { font-size: 25px; }
   .doctor-info p { font-size: 14px; }
   .doctor-tag { font-size: 10px; bottom: 18px; left: 18px; }
@@ -443,7 +447,6 @@ dialog h2 { font-size: 38px; margin-top: 23px; }
   .service-image { height: 210px; }
   .contact-copy h2 { font-size: 39px; }
   .contact-phone { font-size: 24px; }
-  .doctor-image { height: 370px; }
 }
 @media (max-width: 1100px) and (min-width: 901px) {
   .service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 24px; }

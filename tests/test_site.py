@@ -86,6 +86,7 @@ function field(id, type) {
       return {valueMissing, valid: !valueMissing && (type !== 'tel' || pattern.test(this.value))};
     },
     setAttribute(name, value) { this.attributes[name] = value; },
+    setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; },
     addEventListener(type, handler) { this[type] = handler; },
     focus() { focused = id; }
   };
@@ -101,6 +102,29 @@ require('node:vm').runInNewContext(source.slice(source.indexOf('  const appointm
 });
 assert.equal(button.hidden, false);
 assert.equal(form.noValidate, true);
+for (const [value, expected] of [['Ан12на', 'Анна'], ['Jean-Luc O’Neil', 'Jean-Luc O’Neil'], ['Анна ١２3', 'Анна '], ['123', '']]) {
+  name.value = value;
+  name.selectionStart = name.selectionEnd = value.length;
+  name.input();
+  assert.equal(name.value, expected);
+}
+name.value = 'Ан1на';
+name.selectionStart = name.selectionEnd = 3;
+name.input();
+assert.equal(name.value, 'Анна');
+assert.equal(name.selectionStart, 2);
+assert.equal(errors['#appointment-name-error'].hidden, true);
+for (const [value, expected] of [['+7abc (999) тест123-45-67', '+7 (999) 123-45-67'], ['letters!?@', ''], ['++7999+1234567', '+79991234567'], ['89991234567', '89991234567']]) {
+  phone.value = value;
+  phone.selectionStart = phone.selectionEnd = value.length;
+  phone.input();
+  assert.equal(phone.value, expected);
+}
+phone.value = '+7ab999';
+phone.selectionStart = phone.selectionEnd = 4;
+phone.input();
+assert.equal(phone.value, '+7999');
+assert.equal(phone.selectionStart, 2);
 phone.value = '12'; phone.input();
 assert.equal(errors['#appointment-phone-error'].hidden, true);
 name.value = '   ';
@@ -127,6 +151,34 @@ assert.equal(name.value, 'Анна');
 phone.value = '12'; phone.input();
 assert.equal(status.textContent, '');
 assert.equal(phone.attributes['aria-invalid'], 'true');
+"""
+        result = subprocess.run(['node', '-e', script], cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    @unittest.skipUnless(shutil.which('node'), 'Node is needed for frontend behavior checks')
+    def test_accordion_closes_other_answers_without_scrolling_page(self):
+        script = r"""
+const assert = require('node:assert/strict');
+const source = require('node:fs').readFileSync('script.js', 'utf8');
+const details = [0, 1, 2].map(index => ({open: index === 0}));
+const summaries = details.map((detail, index) => ({
+  addEventListener(type, handler) { assert.equal(type, 'click'); this.click = handler; }
+}));
+details.forEach((detail, index) => { detail.querySelector = () => summaries[index]; });
+require('node:vm').runInNewContext(source.slice(source.indexOf('  const techDetails ='), source.indexOf('  const comparisonRange =')), {
+  document: {querySelectorAll: () => details},
+  window: {
+    scrollBy() { assert.fail('Accordion must not scroll the page'); },
+    scrollTo() { assert.fail('Accordion must not scroll the page'); }
+  }
+});
+for (const index of [1, 2, 0, 0]) {
+  const opening = !details[index].open;
+  let prevented = false;
+  summaries[index].click({preventDefault() { prevented = true; }});
+  assert.ok(prevented);
+  assert.deepEqual(details.map(d => d.open), details.map((d, i) => opening && i === index));
+}
 """
         result = subprocess.run(['node', '-e', script], cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
