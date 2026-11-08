@@ -51,8 +51,8 @@
     },
     milena: {
       title: 'Милена Радиковна Шакирьянова',
-      role: 'СТОМАТОЛОГ-ОРТОДОНТ · СТОМАТОЛОГ · СТОМАТОЛОГ-ГИГИЕНИСТ',
-      description: 'Ортодонтия, лечение зубов и профессиональная гигиена. Выпускница Казанского государственного медицинского университета по специальности «Стоматология», 2021 год.',
+      role: 'СТОМАТОЛОГ-ОРТОДОНТ · СТОМАТОЛОГ',
+      description: 'Ортодонтия и лечение зубов. Выпускница Казанского государственного медицинского университета по специальности «Стоматология», 2021 год.',
       details: 'Прошла повышение квалификации по эндодонтии, реставрации зубов, КЛКТ и диагностике на ортодонтическом приёме. Актуальное расписание и запись уточняйте в клинике.'
     }
   };
@@ -213,21 +213,24 @@
   const reviewTrack = document.querySelector('.review-track');
   const reviewCards = [...reviewTrack.children];
   let reviewIndex = 0;
+  function updateReviewPosition(index) {
+    reviewIndex = index;
+    document.querySelector('#review-current').textContent = String(index + 1).padStart(2, '0');
+    document.querySelector('.review-position-line').style.setProperty('--progress', index / Math.max(1, reviewCards.length - 1) * 50 + '%');
+  }
   function selectReview(index) {
-    reviewIndex = (index + reviewCards.length) % reviewCards.length;
+    updateReviewPosition((index + reviewCards.length) % reviewCards.length);
     const target = reviewCards[reviewIndex];
     reviewTrack.scrollTo({ left: target.offsetLeft - reviewCards[0].offsetLeft, behavior: reducedMotion.matches ? 'instant' : 'smooth' });
-    document.querySelector('#review-current').textContent = String(reviewIndex + 1).padStart(2, '0');
-    document.querySelector('.review-position-line').style.setProperty('--progress', reviewIndex * 50 + '%');
   }
   document.querySelector('#review-prev').addEventListener('click', () => selectReview(reviewIndex - 1));
   document.querySelector('#review-next').addEventListener('click', () => selectReview(reviewIndex + 1));
   reviewTrack.addEventListener('scroll', () => {
     if (reviewTrack.scrollWidth <= reviewTrack.clientWidth + 1) return;
-    const nextIndex = reviewTrack.scrollLeft > (reviewTrack.scrollWidth - reviewTrack.clientWidth) / 2 ? 1 : 0;
-    document.querySelector('#review-current').textContent = String(nextIndex + 1).padStart(2, '0');
-    document.querySelector('.review-position-line').style.setProperty('--progress', nextIndex * 50 + '%');
-    reviewIndex = nextIndex;
+    const maxScroll = reviewTrack.scrollWidth - reviewTrack.clientWidth;
+    const distance = card => Math.abs(reviewTrack.scrollLeft - Math.min(card.offsetLeft - reviewCards[0].offsetLeft, maxScroll));
+    const nextIndex = reviewCards.reduce((nearest, card, index) => distance(card) < distance(reviewCards[nearest]) ? index : nearest, 0);
+    updateReviewPosition(nextIndex);
   }, { passive: true });
 
   if ('IntersectionObserver' in window && !reducedMotion.matches) {

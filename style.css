@@ -183,6 +183,7 @@ h1 span { color: var(--wine); }
 .review-card { background: #f0eeeb; border-radius: 20px; padding: 32px; scroll-snap-align: start; min-width: 0; display: flex; flex-direction: column; }
 .review-stars { color: var(--wine); display: flex; align-items: center; justify-content: space-between; gap: 15px; font-size: 13px; letter-spacing: 3px; }
 .review-stars span { font-size: 10px; letter-spacing: 1px; color: var(--muted); }
+.review-doctor, .review-context { font-size: 12px; line-height: 1.6; color: var(--muted); margin-top: 20px; }
 .review-card blockquote { font-size: 22px; font-weight: 450; line-height: 1.45; letter-spacing: -.5px; margin-top: 27px; margin-bottom: 32px; }
 .review-author { display: flex; align-items: center; gap: 12px; margin-top: auto; }
 .avatar { display: grid; place-items: center; flex-shrink: 0; width: 37px; height: 37px; border-radius: 50%; background: #e6dce0; color: var(--wine); font-size: 13px; }

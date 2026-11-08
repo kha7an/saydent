@@ -184,6 +184,48 @@ for (const index of [1, 2, 0, 0]) {
         self.assertEqual(result.returncode, 0, result.stderr)
 
     @unittest.skipUnless(shutil.which('node'), 'Node is needed for frontend behavior checks')
+    def test_reviews_navigate_all_cards_and_track_manual_scroll(self):
+        script = r"""
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const source = fs.readFileSync('script.js', 'utf8');
+const html = fs.readFileSync('index.html', 'utf8');
+const count = [...html.matchAll(/class="review-card"/g)].length;
+assert.equal(count, 5);
+assert.match(html, /class="review-position"[^\n]*<span>05<\/span>/);
+for (const width of [390, 1280]) {
+  const cardWidth = width * .65, gap = 24;
+  const cards = Array.from({length: count}, (_, i) => ({offsetLeft: 56 + i * (cardWidth + gap)}));
+  const current = {}, line = {style: {setProperty(name, value) { this[name] = value; }}};
+  const controls = Object.fromEntries(['#review-prev', '#review-next'].map(key => [key, {
+    addEventListener(type, handler) { this[type] = handler; }
+  }]));
+  const track = {children: cards, clientWidth: width, scrollWidth: count * cardWidth + (count - 1) * gap, scrollLeft: 0,
+    scrollTo({left, behavior}) { assert.equal(behavior, 'instant'); this.scrollLeft = Math.min(left, this.scrollWidth - width); },
+    addEventListener(type, handler) { this[type] = handler; }
+  };
+  require('node:vm').runInNewContext(source.slice(source.indexOf('  const reviewTrack ='), source.indexOf("  if ('IntersectionObserver'")), {
+    reducedMotion: {matches: true},
+    document: {querySelector: selector => ({'.review-track': track, '#review-current': current, '.review-position-line': line, ...controls})[selector]}
+  });
+  for (let i = 1; i <= count; i++) {
+    controls['#review-next'].click(); track.scroll();
+    assert.equal(current.textContent, String(i % count + 1).padStart(2, '0'));
+  }
+  controls['#review-prev'].click(); track.scroll();
+  assert.equal(current.textContent, '05');
+  assert.equal(line.style['--progress'], '50%');
+  for (let i = 0; i < count; i++) {
+    track.scrollLeft = Math.min(cards[i].offsetLeft - cards[0].offsetLeft, track.scrollWidth - width);
+    track.scroll();
+    assert.equal(current.textContent, String(i + 1).padStart(2, '0'));
+  }
+}
+"""
+        result = subprocess.run(['node', '-e', script], cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    @unittest.skipUnless(shutil.which('node'), 'Node is needed for frontend behavior checks')
     def test_comparison_reveals_before_and_after_at_range_limits(self):
         script = r"""
 const assert = require('node:assert/strict');
