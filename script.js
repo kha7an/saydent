@@ -111,13 +111,11 @@
     });
   });
 
-  function showInfo({ eyebrow, title, description, details, policy = false }) {
+  function showInfo({ eyebrow, title, description, details }) {
     document.querySelector('#info-eyebrow').textContent = eyebrow;
     document.querySelector('#info-title').textContent = title;
     document.querySelector('#info-description').textContent = description;
     document.querySelector('#info-details').textContent = details;
-    const appointmentLink = document.querySelector('#info-appointment');
-    appointmentLink.hidden = policy;
     openDialog(infoDialog);
   }
 
@@ -134,20 +132,26 @@
     });
   });
   document.querySelector('#info-appointment').addEventListener('click', () => infoDialog.close());
-  document.querySelectorAll('[data-policy]').forEach(button => {
-    button.addEventListener('click', () => showInfo({
-      eyebrow: 'КОНФИДЕНЦИАЛЬНОСТЬ',
-      title: 'Ваши данные - под вашим контролем.',
-      description: 'Форма работает в режиме предпросмотра: введённые имя и телефон остаются только на этой странице до её перезагрузки. Сайт не отправляет их в клинику. Для записи позвоните нам.',
-      details: 'Сайт не сохраняет контакты в локальном хранилище браузера. Встроенная карта загружается с сервиса Яндекс.Карты; при её загрузке браузер обращается к этому сервису. Внешние ссылки открывают сторонние сайты. Для связи с клиникой: +7 950 949-93-25.',
-      policy: true
-    }));
+  const cookieNotice = document.querySelector('#cookie-notice');
+  try {
+    cookieNotice.hidden = document.cookie.split(';').some(cookie => cookie.trim() === 'saydent_cookie_notice=1');
+  } catch {
+    cookieNotice.hidden = false;
+  }
+  document.querySelector('#cookie-dismiss').addEventListener('click', () => {
+    try {
+      document.cookie = 'saydent_cookie_notice=1; Max-Age=15552000; Path=/; SameSite=Lax' + (window.location.protocol === 'https:' ? '; Secure' : '');
+    } catch {
+      // Cookie restrictions must not prevent closing the notice.
+    }
+    cookieNotice.hidden = true;
   });
 
   const appointmentForm = document.querySelector('#appointment-form');
   const appointmentFields = [...appointmentForm.querySelectorAll('input[required]')];
   const appointmentStatus = document.querySelector('#appointment-status');
   let appointmentAttempted = false;
+  let demoSubmissionUntil = 0;
   function validateAppointmentField(field) {
     let message = '';
     if (field.id === 'appointment-name' && (!field.value.trim() || /\p{Nd}/u.test(field.value) || !field.validity.valid)) message = /\p{Nd}/u.test(field.value) ? 'Укажите имя без цифр.' : 'Укажите ваше имя.';
@@ -189,7 +193,23 @@
       invalidFields[0].focus();
       return;
     }
-    appointmentStatus.textContent = 'Отправка пока недоступна. Позвоните в клинику: +7 950 949-93-25.';
+    let alreadySubmitted = Date.now() < demoSubmissionUntil;
+    try {
+      alreadySubmitted ||= document.cookie.split(';').some(cookie => cookie.trim() === 'saydent_demo_submitted=1');
+    } catch {
+      // Keep the current-page limit even when cookies are blocked.
+    }
+    if (alreadySubmitted) {
+      appointmentStatus.textContent = 'Вы уже заполнили форму. Для подтверждения записи позвоните: +7 950 949-93-25.';
+      return;
+    }
+    demoSubmissionUntil = Date.now() + 10 * 60 * 1000;
+    try {
+      document.cookie = 'saydent_demo_submitted=1; Max-Age=600; Path=/; SameSite=Lax' + (window.location.protocol === 'https:' ? '; Secure' : '');
+    } catch {
+      // The demo still works without persistent browser storage.
+    }
+    appointmentStatus.textContent = 'Для завершения записи позвоните в клинику: +7 950 949-93-25. Онлайн-отправка сейчас недоступна.';
   });
   appointmentForm.noValidate = true;
   document.querySelector('#appointment-submit').hidden = false;

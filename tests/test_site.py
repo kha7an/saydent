@@ -11,10 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Page(HTMLParser):
-    def __init__(self):
+    def __init__(self, filename='index.html'):
         super().__init__()
         self.elements = []
-        self.feed((ROOT / 'index.html').read_text())
+        self.feed((ROOT / filename).read_text())
 
     def handle_starttag(self, tag, attrs):
         self.elements.append((tag, dict(attrs)))
@@ -53,6 +53,23 @@ class SiteTests(unittest.TestCase):
             if tag == 'a' and attrs.get('target') == '_blank':
                 self.assertIn('noopener', attrs.get('rel', '').split())
 
+    def test_privacy_documents_are_linked_and_work_without_javascript(self):
+        links = [attrs.get('href') for tag, attrs in self.elements if tag == 'a']
+        self.assertGreaterEqual(links.count('privacy.html'), 3)
+        self.assertIn('consent.html', links)
+        self.assertFalse(any('data-policy' in attrs for _, attrs in self.elements))
+        for filename in ('privacy.html', 'consent.html'):
+            elements = Page(filename).elements
+            self.assertEqual(sum(tag == 'h1' for tag, _ in elements), 1)
+            self.assertFalse(any(tag == 'script' for tag, _ in elements))
+            for tag, attrs in elements:
+                for key in ('href', 'src'):
+                    url = urlsplit(attrs.get(key, ''))
+                    if not url.scheme and not url.netloc and url.path:
+                        self.assertTrue((ROOT / unquote(url.path)).is_file())
+                if tag == 'a' and attrs.get('target') == '_blank':
+                    self.assertIn('noopener', attrs.get('rel', '').split())
+
     def test_appointment_preview_fields_cannot_send_personal_data_without_js(self):
         self.assertTrue(any(tag == 'a' and attrs.get('href') == 'tel:+79509499325'
                             for tag, attrs in self.elements))
@@ -63,6 +80,35 @@ class SiteTests(unittest.TestCase):
         self.assertNotIn('checked', inputs['appointment-consent'])
         submit = next(attrs for tag, attrs in self.elements if attrs.get('id') == 'appointment-submit')
         self.assertIn('hidden', submit)
+
+    @unittest.skipUnless(shutil.which('node'), 'Node is needed for frontend behavior checks')
+    def test_cookie_notice_remembers_dismissal_and_handles_blocked_cookies(self):
+        script = r"""
+const assert = require('node:assert/strict');
+const source = require('node:fs').readFileSync('script.js', 'utf8');
+const block = source.slice(source.indexOf('  const cookieNotice ='), source.indexOf('  const appointmentForm ='));
+for (const [cookies, hidden] of [['', false], ['other=1; saydent_cookie_notice=1', true], ['saydent_cookie_notice=10', false]]) {
+  for (const protocol of ['http:', 'https:']) {
+    const notice = {hidden: true}, button = {};
+    const document = {cookie: cookies, querySelector: selector => selector === '#cookie-notice' ? notice : button};
+    button.addEventListener = (type, handler) => { button.click = handler; };
+    require('node:vm').runInNewContext(block, {document, window: {location: {protocol}}});
+    assert.equal(notice.hidden, hidden);
+    button.click();
+    assert.equal(notice.hidden, true);
+    assert.equal(document.cookie, 'saydent_cookie_notice=1; Max-Age=15552000; Path=/; SameSite=Lax' + (protocol === 'https:' ? '; Secure' : ''));
+  }
+}
+const notice = {}, button = {addEventListener(type, handler) { this.click = handler; }};
+const document = {querySelector: selector => selector === '#cookie-notice' ? notice : button,
+  get cookie() { throw Error('blocked'); }, set cookie(value) { throw Error('blocked'); }};
+require('node:vm').runInNewContext(block, {document, window: {location: {protocol: 'https:'}}});
+assert.equal(notice.hidden, false);
+button.click();
+assert.equal(notice.hidden, true);
+"""
+        result = subprocess.run(['node', '-e', script], cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     @unittest.skipUnless(shutil.which('node'), 'Node is needed for frontend behavior checks')
     def test_preview_submit_prevents_navigation_and_validates_without_sending(self):
@@ -97,9 +143,15 @@ const consent = field('appointment-consent', 'checkbox');
 const form = {noValidate: false, querySelectorAll: () => [name, phone, consent], addEventListener(type, handler) {
   assert.equal(type, 'submit'); assert.equal(button.hidden, true); assert.equal(this.noValidate, false); submit = handler;
 }};
-require('node:vm').runInNewContext(source.slice(source.indexOf('  const appointmentForm ='), source.indexOf('  const techDetails =')), {
-  document: {querySelector: selector => ({'#appointment-form': form, '#appointment-submit': button, '#appointment-status': status, ...errors})[selector]}
-});
+let now = 1000000;
+const document = {cookie: '', querySelector: selector => ({'#appointment-form': form, '#appointment-submit': button, '#appointment-status': status, ...errors})[selector]};
+function loadForm() {
+  button.hidden = true; form.noValidate = false;
+  require('node:vm').runInNewContext(source.slice(source.indexOf('  const appointmentForm ='), source.indexOf('  const techDetails =')), {
+    document, Date: {now: () => now}, window: {location: {protocol: 'https:'}}
+  });
+}
+loadForm();
 assert.equal(button.hidden, false);
 assert.equal(form.noValidate, true);
 for (const [value, expected] of [['Ан12на', 'Анна'], ['Jean-Luc O’Neil', 'Jean-Luc O’Neil'], ['Анна ١２3', 'Анна '], ['123', '']]) {
@@ -145,8 +197,27 @@ for (const input of [name, phone, consent]) {
 }
 submit({preventDefault() { prevented++; }});
 assert.equal(prevented, 2);
-assert.match(status.textContent, /Отправка пока недоступна/);
-assert.match(status.textContent, /950 949-93-25/);
+assert.match(status.textContent, /Для завершения записи/);
+assert.match(status.textContent, /Онлайн-отправка сейчас недоступна/);
+assert.equal(document.cookie, 'saydent_demo_submitted=1; Max-Age=600; Path=/; SameSite=Lax; Secure');
+submit({preventDefault() {}});
+assert.match(status.textContent, /уже заполнили/);
+loadForm();
+submit({preventDefault() {}});
+assert.match(status.textContent, /уже заполнили/);
+// Model the browser expiring the cookie after ten minutes.
+now += 600000; document.cookie = '';
+submit({preventDefault() {}});
+assert.match(status.textContent, /Для завершения записи/);
+Object.defineProperty(document, 'cookie', {get() { throw Error('blocked'); }, set() { throw Error('blocked'); }});
+loadForm();
+submit({preventDefault() {}});
+assert.match(status.textContent, /Для завершения записи/);
+submit({preventDefault() {}});
+assert.match(status.textContent, /уже заполнили/);
+now += 600000;
+submit({preventDefault() {}});
+assert.match(status.textContent, /Для завершения записи/);
 assert.equal(name.value, 'Анна');
 phone.value = '12'; phone.input();
 assert.equal(status.textContent, '');
