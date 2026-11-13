@@ -53,6 +53,54 @@ class SiteTests(unittest.TestCase):
             if tag == 'a' and attrs.get('target') == '_blank':
                 self.assertIn('noopener', attrs.get('rel', '').split())
 
+    def test_prices_include_all_sections_and_preserve_service_conditions(self):
+        class Prices(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.sections = []
+                self.in_prices = False
+                self.cell = None
+
+            def handle_starttag(self, tag, attrs):
+                attrs = dict(attrs)
+                if tag == 'section':
+                    self.in_prices = attrs.get('id') == 'prices'
+                if not self.in_prices:
+                    return
+                if tag == 'details':
+                    self.sections.append([])
+                if tag == 'tr':
+                    self.row = []
+                if tag in ('th', 'td'):
+                    self.cell = ''
+
+            def handle_data(self, data):
+                if self.in_prices and self.cell is not None:
+                    self.cell += data
+
+            def handle_endtag(self, tag):
+                if not self.in_prices:
+                    return
+                if tag in ('th', 'td'):
+                    self.row.append(' '.join(self.cell.split()))
+                    self.cell = None
+                if tag == 'tr' and len(self.row) == 2:
+                    self.sections[-1].append(self.row)
+                if tag == 'section':
+                    self.in_prices = False
+
+        prices = Prices()
+        prices.feed((ROOT / 'index.html').read_text())
+        self.assertEqual([len(rows) for rows in prices.sections], [19, 20, 27, 38, 1])
+        rows = [row for section in prices.sections for row in section]
+        self.assertEqual(sum(price == '0 ₽' for _, price in rows), 3)
+        self.assertIn(['Повторный прием,запланированный врачом', '0 ₽'], rows)
+        self.assertIn(['Внутрикостная дентальная имплантация (операция All on 4)', '180 000 ₽'], rows)
+        self.assertIn(['Восстановление зуба коронкой на имплантате Neobiotech(цирконевая коронка)', '34 900 ₽'], rows)
+        self.assertIn(['Прицельный снимок', '300 ₽'], rows)
+        self.assertTrue(all(price.endswith(' ₽') and price[:-2].replace(' ', '').isdigit()
+                            for _, price in rows))
+
     def test_privacy_documents_are_linked_and_work_without_javascript(self):
         links = [attrs.get('href') for tag, attrs in self.elements if tag == 'a']
         self.assertGreaterEqual(links.count('privacy.html'), 3)
@@ -227,28 +275,47 @@ assert.equal(phone.attributes['aria-invalid'], 'true');
         self.assertEqual(result.returncode, 0, result.stderr)
 
     @unittest.skipUnless(shutil.which('node'), 'Node is needed for frontend behavior checks')
-    def test_accordion_closes_other_answers_without_scrolling_page(self):
+    def test_accordions_keep_groups_separate_and_show_opened_price_category(self):
         script = r"""
 const assert = require('node:assert/strict');
 const source = require('node:fs').readFileSync('script.js', 'utf8');
-const details = [0, 1, 2].map(index => ({open: index === 0}));
-const summaries = details.map((detail, index) => ({
-  addEventListener(type, handler) { assert.equal(type, 'click'); this.click = handler; }
-}));
-details.forEach((detail, index) => { detail.querySelector = () => summaries[index]; });
+const groups = ['[data-tech]', '.price-accordion details'].map(selector =>
+  [0, 1, 2].map(index => {
+    const summary = {
+      scrolls: 0,
+      addEventListener(type, handler) { assert.equal(type, 'click'); this.click = handler; },
+      scrollIntoView(options) {
+        assert.equal(selector, '.price-accordion details');
+        assert.equal(options.block, 'start');
+        assert.equal(options.behavior, 'instant');
+        assert.equal(groups[1].filter(detail => detail.open).length, 1);
+        this.scrolls++;
+      }
+    };
+    return {open: index === 0, querySelector: () => summary};
+  })
+);
 require('node:vm').runInNewContext(source.slice(source.indexOf('  const techDetails ='), source.indexOf('  const comparisonRange =')), {
-  document: {querySelectorAll: () => details},
+  document: {querySelectorAll: selector => groups[selector === '[data-tech]' ? 0 : 1]},
   window: {
     scrollBy() { assert.fail('Accordion must not scroll the page'); },
     scrollTo() { assert.fail('Accordion must not scroll the page'); }
   }
 });
-for (const index of [1, 2, 0, 0]) {
-  const opening = !details[index].open;
-  let prevented = false;
-  summaries[index].click({preventDefault() { prevented = true; }});
-  assert.ok(prevented);
-  assert.deepEqual(details.map(d => d.open), details.map((d, i) => opening && i === index));
+for (const [groupIndex, details] of groups.entries()) {
+  const other = groups[1 - groupIndex];
+  const unchanged = other.map(detail => detail.open);
+  for (const index of [1, 2, 0, 0]) {
+    const summary = details[index].querySelector();
+    const opening = !details[index].open;
+    const scrolls = summary.scrolls;
+    let prevented = false;
+    summary.click({preventDefault() { prevented = true; }});
+    assert.ok(prevented);
+    assert.deepEqual(details.map(d => d.open), details.map((d, i) => opening && i === index));
+    assert.deepEqual(other.map(detail => detail.open), unchanged);
+    assert.equal(summary.scrolls, scrolls + Number(groupIndex === 1 && opening));
+  }
 }
 """
         result = subprocess.run(['node', '-e', script], cwd=ROOT, capture_output=True, text=True)

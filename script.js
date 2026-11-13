@@ -215,12 +215,16 @@
   document.querySelector('#appointment-submit').hidden = false;
 
   const techDetails = [...document.querySelectorAll('[data-tech]')];
-  techDetails.forEach(detail => {
-    const summary = detail.querySelector('summary');
-    summary.addEventListener('click', event => {
-      event.preventDefault();
-      const opening = !detail.open;
-      techDetails.forEach(other => { other.open = other === detail && opening; });
+  const priceDetails = [...document.querySelectorAll('.price-accordion details')];
+  [techDetails, priceDetails].forEach(details => {
+    details.forEach(detail => {
+      const summary = detail.querySelector('summary');
+      summary.addEventListener('click', event => {
+        event.preventDefault();
+        const opening = !detail.open;
+        details.forEach(other => { other.open = other === detail && opening; });
+        if (opening && details === priceDetails) summary.scrollIntoView({ block: 'start', behavior: 'instant' });
+      });
     });
   });
 

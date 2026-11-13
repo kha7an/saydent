@@ -131,6 +131,19 @@ h1 span { color: var(--wine); }
 .service-copy p { font-size: 14px; line-height: 1.6; color: var(--muted); }
 .service-copy .circle-button { position: absolute; left: 0; bottom: 0; width: 44px; height: 44px; font-size: 20px; }
 
+.prices > .section-description { margin-top: 24px; max-width: 660px; }
+.price-accordion { margin-top: 40px; }
+.price-accordion details { border-bottom: 1px solid var(--line); }
+.price-accordion summary { min-height: 64px; padding-block: 22px; font-size: 22px; font-weight: 500; line-height: 1.4; letter-spacing: -.4px; overflow-wrap: anywhere; }
+.price-accordion details[open] > summary { color: var(--wine); }
+.price-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 24px; font-size: 16px; line-height: 1.7; }
+.price-table th, .price-table td { padding-block: 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.price-table th { text-align: left; font-weight: 400; padding-right: 28px; overflow-wrap: anywhere; }
+.price-table td { width: 140px; text-align: right; white-space: nowrap; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--wine); }
+.price-table tr:last-child > * { border-bottom: 0; }
+.price-table .price-subheading { padding-top: 30px; font-size: 18px; font-weight: 500; color: var(--wine); }
+.price-note { margin-top: 24px; max-width: 780px; font-size: 13px; line-height: 1.8; color: var(--muted); }
+
 .technology { overflow-anchor: none; background: #1c1b1d; color: #f8f6f5; overflow: hidden; }
 .tech-layout { display: grid; grid-template-columns: 1.08fr 1fr; gap: 70px; align-items: start; }
 .technology h2 span { color: #b3818e; }
@@ -413,6 +426,13 @@ dialog h2 { font-size: 38px; margin-top: 23px; }
   .service-copy p { font-size: 14px; }
   .service-copy .circle-button { top: auto; bottom: 0; left: 0; width: 44px; height: 44px; }
   .section-note { font-size: 12px; line-height: 1.8; }
+  .prices > .section-description { margin-top: 20px; font-size: 14px; }
+  .price-accordion { margin-top: 28px; }
+  .price-accordion summary { font-size: 20px; padding-block: 20px; }
+  .price-table { font-size: 14px; }
+  .price-table th { padding-right: 14px; }
+  .price-table td { width: 96px; }
+  .price-table .price-subheading { font-size: 16px; }
   .tech-layout { grid-template-columns: 1fr; gap: 40px; }
   .tech-copy > .section-description { font-size: 14px; margin-top: 22px; }
   .tech-steps summary { font-size: 15px; padding-block: 19px; gap: 15px; }
