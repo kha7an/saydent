@@ -48,6 +48,14 @@ class SiteTests(unittest.TestCase):
                 self.assertGreater(int(attrs['width']), 0)
                 self.assertGreater(int(attrs['height']), 0)
 
+    def test_external_services_require_a_link_click(self):
+        for tag, attrs in self.elements:
+            if tag != 'a':
+                for key in ('src', 'href'):
+                    self.assertFalse(urlsplit(attrs.get(key, '')).netloc, attrs)
+        self.assertTrue(any(tag == 'a' and attrs.get('href', '').startswith('https://yandex.ru/maps/?rtext=')
+                            for tag, attrs in self.elements))
+
     def test_external_links_are_safe(self):
         for tag, attrs in self.elements:
             if tag == 'a' and attrs.get('target') == '_blank':
@@ -159,8 +167,9 @@ assert.equal(notice.hidden, true);
         self.assertEqual(result.returncode, 0, result.stderr)
 
     @unittest.skipUnless(shutil.which('node'), 'Node is needed for frontend behavior checks')
-    def test_preview_submit_prevents_navigation_and_validates_without_sending(self):
+    def test_submit_validates_and_waits_for_server_confirmation(self):
         script = r"""
+(async () => {
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const source = fs.readFileSync('script.js', 'utf8');
@@ -191,12 +200,22 @@ const consent = field('appointment-consent', 'checkbox');
 const form = {noValidate: false, querySelectorAll: () => [name, phone, consent], addEventListener(type, handler) {
   assert.equal(type, 'submit'); assert.equal(button.hidden, true); assert.equal(this.noValidate, false); submit = handler;
 }};
-let now = 1000000;
-const document = {cookie: '', querySelector: selector => ({'#appointment-form': form, '#appointment-submit': button, '#appointment-status': status, ...errors})[selector]};
-function loadForm() {
-  button.hidden = true; form.noValidate = false;
+let now = 1000000, calls = 0, fail = false, nextId = 0;
+const requestIds = [];
+const fetch = async (url, options) => {
+  calls++; assert.equal(url, '/api/appointments'); assert.equal(button.disabled, true);
+  const body = JSON.parse(options.body); assert.equal(body.name, 'Анна'); assert.equal(body.consent, true);
+  requestIds.push(body.request_id);
+  if (fail) throw new TypeError('network');
+  return {ok: true, json: async () => ({ok: true})};
+};
+const receipt = {hidden: true};
+const receiptTitle = {focus() { focused = 'receipt-title'; }};
+const document = {cookie: '', querySelector: selector => ({'#appointment-receipt': receipt, '#receipt-title': receiptTitle, '#appointment-form': form, '#appointment-submit': button, '#appointment-status': status, ...errors})[selector]};
+function loadForm(abortSignal = AbortSignal) {
+  receipt.hidden = true; button.hidden = true; form.noValidate = false;
   require('node:vm').runInNewContext(source.slice(source.indexOf('  const appointmentForm ='), source.indexOf('  const techDetails =')), {
-    document, Date: {now: () => now}, window: {location: {protocol: 'https:'}}
+    document, fetch, AbortSignal: abortSignal, Date: {now: () => now}, window: {crypto: {randomUUID: () => String(++nextId)}, location: {protocol: 'https:'}}
   });
 }
 loadForm();
@@ -228,7 +247,7 @@ assert.equal(phone.selectionStart, 2);
 phone.value = '12'; phone.input();
 assert.equal(errors['#appointment-phone-error'].hidden, true);
 name.value = '   ';
-submit({preventDefault() { prevented++; }});
+await submit({preventDefault() { prevented++; }});
 assert.equal(status.textContent, '');
 assert.equal(focused, 'appointment-name');
 assert.equal(errors['#appointment-name-error'].textContent, 'Укажите ваше имя.');
@@ -243,33 +262,47 @@ for (const input of [name, phone, consent]) {
   assert.equal(input.attributes['aria-invalid'], 'false');
   assert.equal(errors['#' + input.id + '-error'].hidden, true);
 }
-submit({preventDefault() { prevented++; }});
+await submit({preventDefault() { prevented++; }});
 assert.equal(prevented, 2);
-assert.match(status.textContent, /Для завершения записи/);
-assert.match(status.textContent, /Онлайн-отправка сейчас недоступна/);
-assert.equal(document.cookie, 'saydent_demo_submitted=1; Max-Age=600; Path=/; SameSite=Lax; Secure');
-submit({preventDefault() {}});
+assert.equal(receipt.hidden, false); assert.equal(focused, 'receipt-title');
+assert.equal(calls, 1); assert.equal(button.disabled, false);
+assert.equal(document.cookie, 'saydent_submitted=1; Max-Age=600; Path=/; SameSite=Lax; Secure');
+await submit({preventDefault() {}});
 assert.match(status.textContent, /уже заполнили/);
 loadForm();
-submit({preventDefault() {}});
+await submit({preventDefault() {}});
 assert.match(status.textContent, /уже заполнили/);
 // Model the browser expiring the cookie after ten minutes.
 now += 600000; document.cookie = '';
-submit({preventDefault() {}});
-assert.match(status.textContent, /Для завершения записи/);
+await submit({preventDefault() {}});
+assert.equal(receipt.hidden, false); assert.equal(focused, 'receipt-title');
 Object.defineProperty(document, 'cookie', {get() { throw Error('blocked'); }, set() { throw Error('blocked'); }});
 loadForm();
-submit({preventDefault() {}});
-assert.match(status.textContent, /Для завершения записи/);
-submit({preventDefault() {}});
+await submit({preventDefault() {}});
+assert.equal(receipt.hidden, false); assert.equal(focused, 'receipt-title');
+await submit({preventDefault() {}});
 assert.match(status.textContent, /уже заполнили/);
 now += 600000;
-submit({preventDefault() {}});
-assert.match(status.textContent, /Для завершения записи/);
+await submit({preventDefault() {}});
+assert.equal(receipt.hidden, false); assert.equal(focused, 'receipt-title');
 assert.equal(name.value, 'Анна');
 phone.value = '12'; phone.input();
 assert.equal(status.textContent, '');
 assert.equal(phone.attributes['aria-invalid'], 'true');
+now += 600000; fail = true;
+loadForm({}); // Safari versions without AbortSignal.timeout must still send.
+phone.value = '+7 999 123-45-67';
+await submit({preventDefault() {}});
+assert.match(status.textContent, /Не удалось подтвердить/);
+assert.equal(receipt.hidden, true);
+assert.equal(button.disabled, false);
+assert.equal(name.value, 'Анна');
+fail = false;
+await submit({preventDefault() {}});
+assert.equal(receipt.hidden, false); assert.equal(focused, 'receipt-title');
+assert.equal(requestIds.at(-1), requestIds.at(-2));
+assert.notEqual(requestIds[0], requestIds[1]);
+})().catch(error => { console.error(error); process.exitCode = 1; });
 """
         result = subprocess.run(['node', '-e', script], cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)

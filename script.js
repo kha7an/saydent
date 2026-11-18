@@ -11,26 +11,22 @@
 
   const services = {
     therapy: {
-      title: 'Сохранять своё.',
-      name: 'Лечение зубов',
+      title: 'Лечение зубов',
       description: 'Здоровье зубов начинается с внимательного осмотра. На консультации врач оценит состояние зубов, обсудит жалобы и предложит дальнейшие шаги.',
       details: 'Лечение кариеса, восстановление повреждённого зуба и работа с корневыми каналами обсуждаются по показаниям. Доступность процедуры и стоимость уточняйте в клинике.'
     },
     aesthetic: {
-      title: 'Комфорт в каждом движении.',
-      name: 'Восстановление функции зубов',
+      title: 'Восстановление функции зубов',
       description: 'Повреждённые зубы могут мешать привычно жевать и говорить. На консультации врач оценит их состояние и обсудит варианты восстановления.',
       details: 'Необходимость коронок, вкладок или мостовидных протезов определяется после обследования. Метод и материалы подбираются индивидуально.'
     },
     restore: {
-      title: 'Снова быть собой.',
-      name: 'Имплантация зубов',
+      title: 'Имплантация зубов',
       description: 'Когда зуб повреждён или утрачен, важно рассмотреть не только эстетику, но и функцию. Начните с обсуждения вашей ситуации с врачом.',
       details: 'Способ восстановления, необходимость хирургического этапа и доступные варианты протезирования уточняются в клинике. Сроки и стоимость зависят от плана лечения.'
     },
     hygiene: {
-      title: 'Забота на каждый день.',
-      name: 'Гигиена и профилактика',
+      title: 'Гигиена и профилактика',
       description: 'Профессиональный уход дополняет домашнюю гигиену. Врач оценит состояние зубов и дёсен и поможет разобраться в ежедневном уходе.',
       details: 'Состав профессиональной гигиены и периодичность посещений подбираются индивидуально. На консультации можно обсудить выбор щётки, пасты и дополнительных средств.'
     }
@@ -122,7 +118,7 @@
   document.querySelectorAll('[data-service]').forEach(button => {
     button.addEventListener('click', () => {
       const service = services[button.dataset.service];
-      showInfo({ eyebrow: service.name.toLocaleUpperCase('ru-RU'), title: service.title, description: service.description, details: service.details });
+      showInfo({ eyebrow: '', title: service.title, description: service.description, details: service.details });
     });
   });
   document.querySelectorAll('[data-doctor]').forEach(button => {
@@ -151,7 +147,9 @@
   const appointmentFields = [...appointmentForm.querySelectorAll('input[required]')];
   const appointmentStatus = document.querySelector('#appointment-status');
   let appointmentAttempted = false;
-  let demoSubmissionUntil = 0;
+  let submissionUntil = 0;
+  let pendingRequest = null;
+  const submitButton = document.querySelector('#appointment-submit');
   function validateAppointmentField(field) {
     let message = '';
     if (field.id === 'appointment-name' && (!field.value.trim() || /\p{Nd}/u.test(field.value) || !field.validity.valid)) message = /\p{Nd}/u.test(field.value) ? 'Укажите имя без цифр.' : 'Укажите ваше имя.';
@@ -184,8 +182,9 @@
       appointmentStatus.textContent = '';
     });
   });
-  appointmentForm.addEventListener('submit', event => {
+  appointmentForm.addEventListener('submit', async event => {
     event.preventDefault();
+    if (submitButton.disabled) return;
     appointmentAttempted = true;
     appointmentStatus.textContent = '';
     const invalidFields = appointmentFields.filter(field => !validateAppointmentField(field));
@@ -193,9 +192,9 @@
       invalidFields[0].focus();
       return;
     }
-    let alreadySubmitted = Date.now() < demoSubmissionUntil;
+    let alreadySubmitted = Date.now() < submissionUntil;
     try {
-      alreadySubmitted ||= document.cookie.split(';').some(cookie => cookie.trim() === 'saydent_demo_submitted=1');
+      alreadySubmitted ||= document.cookie.split(';').some(cookie => cookie.trim() === 'saydent_submitted=1');
     } catch {
       // Keep the current-page limit even when cookies are blocked.
     }
@@ -203,13 +202,44 @@
       appointmentStatus.textContent = 'Вы уже заполнили форму. Для подтверждения записи позвоните: +7 950 949-93-25.';
       return;
     }
-    demoSubmissionUntil = Date.now() + 10 * 60 * 1000;
-    try {
-      document.cookie = 'saydent_demo_submitted=1; Max-Age=600; Path=/; SameSite=Lax' + (window.location.protocol === 'https:' ? '; Secure' : '');
-    } catch {
-      // The demo still works without persistent browser storage.
+    const payload = {
+      name: appointmentFields[0].value.trim(),
+      phone: appointmentFields[1].value,
+      consent: appointmentFields[2].checked,
+      consent_version: '2026-11-18'
+    };
+    const fingerprint = JSON.stringify(payload);
+    if (!pendingRequest || pendingRequest.fingerprint !== fingerprint) {
+      pendingRequest = { fingerprint, id: window.crypto.randomUUID() };
     }
-    appointmentStatus.textContent = 'Для завершения записи позвоните в клинику: +7 950 949-93-25. Онлайн-отправка сейчас недоступна.';
+    submitButton.disabled = true;
+    appointmentStatus.textContent = 'Отправляем заявку…';
+    try {
+      const response = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, request_id: pendingRequest.id }),
+        signal: typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+          ? AbortSignal.timeout(15000) : undefined
+      });
+      const result = await response.json();
+      if (!response.ok || result.ok !== true) throw new Error(result.message || 'Не удалось отправить заявку.');
+      pendingRequest = null;
+      submissionUntil = Date.now() + 10 * 60 * 1000;
+      try {
+        document.cookie = 'saydent_submitted=1; Max-Age=600; Path=/; SameSite=Lax' + (window.location.protocol === 'https:' ? '; Secure' : '');
+      } catch {
+        // The server also limits duplicate submissions when cookies are blocked.
+      }
+      document.querySelector('#appointment-receipt').hidden = false;
+      document.querySelector('#receipt-title').focus({ preventScroll: true });
+    } catch (error) {
+      appointmentStatus.textContent = error.name === 'TypeError' || error.name === 'TimeoutError' || error.name === 'SyntaxError'
+        ? 'Не удалось подтвердить отправку. Повторите заявку или позвоните: +7 950 949-93-25.'
+        : error.message;
+    } finally {
+      submitButton.disabled = false;
+    }
   });
   appointmentForm.noValidate = true;
   document.querySelector('#appointment-submit').hidden = false;
@@ -257,20 +287,6 @@
     updateReviewPosition(nextIndex);
   }, { passive: true });
 
-  if ('IntersectionObserver' in window && !reducedMotion.matches) {
-    const revealObserver = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (!entry.isIntersecting) return;
-        entry.target.classList.remove('reveal-pending');
-        revealObserver.unobserve(entry.target);
-      });
-    }, { threshold: .08 });
-    document.querySelectorAll('.reveal').forEach(element => {
-      element.classList.add('reveal-pending');
-      revealObserver.observe(element);
-    });
-  }
-
   if ('IntersectionObserver' in window) {
     const links = [...navigation.querySelectorAll('a')];
     const sectionObserver = new IntersectionObserver(entries => {
@@ -285,11 +301,9 @@
     document.querySelectorAll('main > section[id]').forEach(section => sectionObserver.observe(section));
   }
 
-  const parallaxImage = document.querySelector('[data-parallax]');
   let scrollPending = false;
   function renderScroll() {
     header.classList.toggle('scrolled', window.scrollY > 20);
-    if (!reducedMotion.matches && window.scrollY < 1100) parallaxImage.style.transform = 'translateY(' + Math.min(window.scrollY * .075, 65) + 'px)';
     scrollPending = false;
   }
   window.addEventListener('scroll', () => {
@@ -297,9 +311,6 @@
     scrollPending = true;
     window.requestAnimationFrame(renderScroll);
   }, { passive: true });
-  reducedMotion.addEventListener('change', () => {
-    if (reducedMotion.matches) parallaxImage.style.transform = '';
-  });
   renderScroll();
   document.querySelector('#year').textContent = new Date().getFullYear();
 })();
