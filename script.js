@@ -199,7 +199,7 @@
       // Keep the current-page limit even when cookies are blocked.
     }
     if (alreadySubmitted) {
-      appointmentStatus.textContent = 'Вы уже заполнили форму. Для подтверждения записи позвоните: +7 950 949-93-25.';
+      appointmentStatus.textContent = 'Вы уже заполнили форму. Для подтверждения записи позвоните: +7 950 969-76-86.';
       return;
     }
     const payload = {
@@ -235,7 +235,7 @@
       document.querySelector('#receipt-title').focus({ preventScroll: true });
     } catch (error) {
       appointmentStatus.textContent = error.name === 'TypeError' || error.name === 'TimeoutError' || error.name === 'SyntaxError'
-        ? 'Не удалось подтвердить отправку. Повторите заявку или позвоните: +7 950 949-93-25.'
+        ? 'Не удалось подтвердить отправку. Повторите заявку или позвоните: +7 950 969-76-86.'
         : error.message;
     } finally {
       submitButton.disabled = false;

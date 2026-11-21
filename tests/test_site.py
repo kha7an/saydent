@@ -127,7 +127,7 @@ class SiteTests(unittest.TestCase):
                     self.assertIn('noopener', attrs.get('rel', '').split())
 
     def test_appointment_preview_fields_cannot_send_personal_data_without_js(self):
-        self.assertTrue(any(tag == 'a' and attrs.get('href') == 'tel:+79509499325'
+        self.assertTrue(any(tag == 'a' and attrs.get('href') == 'tel:+79509697686'
                             for tag, attrs in self.elements))
         inputs = {attrs['id']: attrs for tag, attrs in self.elements if tag == 'input'}
         for field in ('appointment-name', 'appointment-phone', 'appointment-consent'):
