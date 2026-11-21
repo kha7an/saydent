@@ -97,7 +97,7 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(db.execute('SELECT count(*) FROM appointments').fetchone()[0], 0)
 
     def test_only_public_files_are_served(self):
-        for path in ['/', '/script.js', '/consent.html', '/saydent-license.pdf', '/images/smile.webp']:
+        for path in ['/', '/script.js', '/consent.html', '/license.html', '/saydent-license.pdf', '/images/smile.webp']:
             with urlopen(self.url + path) as response:
                 self.assertEqual(response.status, 200)
                 response.read()

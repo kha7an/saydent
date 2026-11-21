@@ -157,7 +157,7 @@ def handler_for(app):
             if path == '/':
                 path = '/index.html'
             target = (ROOT / path.lstrip('/')).resolve()
-            public = {'index.html', 'privacy.html', 'consent.html', 'style.css', 'script.js', 'saydent-license.pdf'}
+            public = {'index.html', 'privacy.html', 'consent.html', 'license.html', 'style.css', 'script.js', 'saydent-license.pdf'}
             return (target.parent == ROOT and target.name in public or
                     target.parent == ROOT / 'images' and target.suffix in {'.png', '.jpg', '.webp'}) and target.is_file()
 

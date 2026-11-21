@@ -245,7 +245,6 @@ address { font-size: 14px; line-height: 1.7; font-style: normal; margin-top: 26p
 .footer-bottom button { min-height: 44px; background: transparent; padding: 0; font-size: 12px; color: inherit; }
 .footer-bottom button:hover, .footer-bottom a:hover { color: var(--wine); }
 .clinic-credentials { margin-top: 20px; color: var(--muted); font-size: 13px; line-height: 1.65; }
-.clinic-credentials a { text-decoration: underline; text-underline-offset: 3px; }
 .medical-note { font-size: clamp(11px, 1.45vw, 20px); text-align: center; color: #71696c; font-weight: 400; margin-top: 43px; letter-spacing: .1px; }
 
 dialog { border: 0; border-radius: 25px; padding: 46px; background: var(--paper); color: var(--ink); max-width: min(650px, calc(100% - 32px)); max-height: min(90dvh, 950px); overflow-y: auto; box-shadow: 0 30px 120px #0003; }
@@ -479,6 +478,18 @@ dialog h2 { font-size: 38px; margin-top: 23px; }
 .legal-page li + li { margin-top: 12px; }
 .legal-page a:not(.logo) { color: var(--wine); text-decoration: underline; text-underline-offset: 3px; }
 .legal-nav { display: flex; flex-wrap: wrap; gap: 16px 24px; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 14px; }
+.license-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 24px; margin-bottom: clamp(32px, 6vw, 64px); }
+.license-number { margin-top: 12px; font-size: 18px; font-weight: 550; }
+.license-links { display: flex; flex-wrap: wrap; column-gap: 24px; margin-top: 12px; }
+.license-notice { margin-top: 32px; padding-top: clamp(24px, 5vw, 40px); border-top: 1px solid var(--line); }
+.license-notice header { margin-bottom: 24px; }
+.license-notice h2 { max-width: 34ch; font-size: clamp(24px, 4vw, 34px); line-height: 1.2; }
+.license-notice h3 { margin-top: 24px; font-size: 17px; font-weight: 600; }
+.license-notice ul { margin-block: 8px 16px; }
+.license-notice li + li { margin-top: 4px; }
+.license-notice li::marker { color: var(--wine); }
+.license-copy-note, .license-notice-signoff { color: var(--muted); font-size: 14px; }
+.license-notice-signoff { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); }
 @media print {
   .legal-page { width: 100%; margin: 0; color: #000; }
   .legal-nav { display: none; }
