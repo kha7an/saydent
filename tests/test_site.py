@@ -99,7 +99,7 @@ class SiteTests(unittest.TestCase):
 
         prices = Prices()
         prices.feed((ROOT / 'index.html').read_text())
-        self.assertEqual([len(rows) for rows in prices.sections], [19, 20, 27, 38, 1])
+        self.assertEqual([len(rows) for rows in prices.sections], [19, 20, 27, 38, 5, 1])
         rows = [row for section in prices.sections for row in section]
         self.assertEqual(sum(price == '0 ₽' for _, price in rows), 3)
         self.assertIn(['Повторный прием,запланированный врачом', '0 ₽'], rows)
