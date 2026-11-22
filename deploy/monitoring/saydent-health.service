@@ -1,0 +1,7 @@
+[Unit]
+Description=Check and recover the SayDent web service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /usr/local/lib/saydent-monitor/check.sh
+TimeoutStartSec=45s

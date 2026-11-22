@@ -75,6 +75,20 @@ sqlite3 -readonly "$DATABASE_PATH" "SELECT count(*) AS pending, datetime(min(cre
 
 При росте очереди проверьте доступность MAX, права бота и ошибки доставки в журнале процесса. При восстановлении связи процесс повторяет доставку сам.
 
+### Восстановление и оповещения в CLO
+
+Конфигурация в `deploy/monitoring/` рассчитана на `saydent.service`, `nginx.service` и домен `saydentkzn.ru`.
+Установите `recovery.conf` как drop-in обеих служб, а `saydent-health.service`,
+`saydent-health.timer` и `saydent-alert@.service` — в `/etc/systemd/system/`.
+Скрипты и `deploy/russian-trusted-root-ca.pem` разместите в `/usr/local/lib/saydent-monitor/`.
+Служба оповещений читает `MAX_BOT_TOKEN` и `MAX_CHAT_ID` из `/etc/saydent/site.env` с правами `0600`.
+При смене получателя заявок оповещения о сбоях также начнут приходить в новый диалог.
+После `systemctl daemon-reload` включите таймер командой `systemctl enable --now saydent-health.timer`.
+Оповещения проверяются запуском `saydent-alert@test.service`, а журнал доступен через
+`journalctl -u 'saydent-alert@*.service' -u saydent-health.service`.
+`kernel-panic.conf` в `/etc/sysctl.d/` задаёт перезагрузку через 30 секунд после паники ядра.
+Для оповещения при недоступности самого VPS нужен внешний монитор.
+
 Обработчик раздаёт только публичные HTML/CSS/JS и изображения, блокирует `.git`, `.env`,
 README, тесты и БД. Если статику раздаёт сам proxy, публикуйте только `index.html`, `privacy.html`,
 `consent.html`, `license.html`, `style.css`, `script.js`, `saydent-license.pdf`, `images/`; не раздавайте корень репозитория целиком.
