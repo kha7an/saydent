@@ -177,7 +177,7 @@ const html = fs.readFileSync('index.html', 'utf8');
 const pattern = new RegExp('^(?:' + html.match(/id="appointment-phone"[^>]*pattern="([^"]+)"/)[1] + ')$', 'v');
 for (const value of ['+7 (999) 123-45-67', '89991234567', '1234567890', '+123456789012345']) assert.ok(pattern.test(value), value);
 for (const value of ['123456789', '+1234567890123456', '+7call9991234567', '++79991234567']) assert.ok(!pattern.test(value), value);
-let submit, prevented = 0, focused;
+let submit, prevented = 0, focused, scrolled;
 const button = {hidden: true};
 const status = {textContent: ''};
 const errors = {};
@@ -191,7 +191,12 @@ function field(id, type) {
     setAttribute(name, value) { this.attributes[name] = value; },
     setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; },
     addEventListener(type, handler) { this[type] = handler; },
-    focus() { focused = id; }
+    focus(options) { assert.equal(options.preventScroll, true); focused = id; },
+    parentElement: {scrollIntoView(options) {
+      assert.equal(options.block, 'nearest');
+      assert.equal(options.behavior, 'instant');
+      scrolled = id;
+    }}
   };
 }
 const name = field('appointment-name', 'text');
@@ -250,6 +255,7 @@ name.value = '   ';
 await submit({preventDefault() { prevented++; }});
 assert.equal(status.textContent, '');
 assert.equal(focused, 'appointment-name');
+assert.equal(scrolled, 'appointment-name');
 assert.equal(errors['#appointment-name-error'].textContent, 'Укажите ваше имя.');
 assert.match(errors['#appointment-phone-error'].textContent, /от 10 до 15/);
 assert.match(errors['#appointment-consent-error'].textContent, /Подтвердите согласие/);

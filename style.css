@@ -87,7 +87,7 @@ h1 span { color: var(--wine); }
 .hero-buttons { display: flex; align-items: center; gap: 25px; margin-top: 34px; }
 
 .hero-visual { min-width: 0; height: 600px; position: relative; }
-.hero-image-wrap { height: 100%; overflow: hidden; border-radius: 160px 24px 24px 24px; background: var(--wine); }
+.hero-image-wrap { display: block; height: 100%; overflow: hidden; border-radius: 160px 24px 24px 24px; background: var(--wine); }
 
 .hero-image-wrap img { height: 100%; object-fit: cover; object-position: 50% 58%; }
 
@@ -133,6 +133,15 @@ h1 span { color: var(--wine); }
 .offer-stages li::marker { color: var(--muted); }
 .offer-stages li > div { display: flex; justify-content: space-between; gap: 12px; }
 .offer-stages strong { font-weight: 500; }
+.giveaway { display: grid; grid-template-columns: .85fr 1.15fr; grid-template-areas: "title prizes" "call prizes"; align-content: start; gap: 16px clamp(28px, 5vw, 72px); margin-top: clamp(48px, 6vw, 88px); padding: clamp(24px, 4vw, 56px); background: #f3e9e9; border-radius: var(--radius); }
+.giveaway h2 { grid-area: title; color: var(--wine); font-size: clamp(34px, 4vw, 58px); }
+.giveaway .text-link { grid-area: call; align-self: end; justify-self: start; }
+.giveaway-prizes { grid-area: prizes; margin: 0; }
+.giveaway-prizes > div { display: grid; grid-template-columns: 4.4em 1fr; gap: 8px; align-items: baseline; padding-block: 14px; border-top: 1px solid #d8c7ca; }
+.giveaway-prizes > div:first-child { padding-top: 0; border: 0; }
+.giveaway-prizes > div:last-child { padding-bottom: 0; }
+.giveaway-prizes dt { color: var(--wine); font-size: 14px; font-weight: 600; }
+.giveaway-prizes dd { margin: 0; font-size: clamp(16px, 1.45vw, 21px); line-height: 1.4; }
 
 .prices > .section-description { margin-top: 24px; max-width: 660px; }
 .price-accordion { margin-top: 40px; }
@@ -457,6 +466,8 @@ dialog h2 { font-size: 38px; margin-top: 23px; }
   .service-image { height: 360px; }
 }
 @media (max-width: 760px) {
+  .giveaway { grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "prizes" "call"; gap: 24px; }
+  .giveaway-prizes > div { grid-template-columns: 3.6em 1fr; }
   .offers-layout { grid-template-columns: minmax(0, 1fr); }
   .offers .section-heading { flex-wrap: wrap; gap: 4px 24px; }
   .contact-layout { grid-template-columns: minmax(0, 1fr); gap: 36px; }

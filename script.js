@@ -189,7 +189,9 @@
     appointmentStatus.textContent = '';
     const invalidFields = appointmentFields.filter(field => !validateAppointmentField(field));
     if (invalidFields.length) {
-      invalidFields[0].focus();
+      const field = invalidFields[0];
+      field.focus({ preventScroll: true });
+      field.parentElement.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       return;
     }
     let alreadySubmitted = Date.now() < submissionUntil;
