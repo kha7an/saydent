@@ -320,7 +320,9 @@ dialog h2 { font-size: 38px; margin-top: 23px; }
 @media (max-width: 900px) {
   .shell { width: calc(100% - 48px); }
   .section-space { padding-block: 80px; }
-  .header { height: 78px; }
+  .header { height: 78px; background: var(--paper); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  /* Continue the header background behind Safari’s floating address bar. */
+  .header::before { content: ""; position: absolute; inset: -100vh 0 100%; background: inherit; pointer-events: none; }
   .header-inner { width: calc(100% - 48px); }
   .menu-toggle { display: block; }
   .header-actions { gap: 12px; }
